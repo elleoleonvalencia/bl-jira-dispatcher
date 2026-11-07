@@ -1,0 +1,10 @@
+{
+  "name": "bl-jira-dispatcher",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "dispatch": "node src/dispatch.mjs",
+    "test": "node --test test/*.test.mjs"
+  }
+}

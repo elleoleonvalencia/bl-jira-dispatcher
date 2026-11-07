@@ -1,0 +1,55 @@
+name: Disparador Jira → Cursor
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Simulación: busca cambios pero no llama a Cursor ni guarda el estado"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: dispatcher
+  cancel-in-progress: false
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Disparar agentes
+        env:
+          DRY_RUN: ${{ inputs.dry_run || 'false' }}
+          JIRA_BASE_URL: https://buildinglife.atlassian.net
+          JIRA_PROJECT: KAN
+          JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
+          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+          CURSOR_RAPIDO_URL: ${{ secrets.CURSOR_RAPIDO_URL }}
+          CURSOR_RAPIDO_TOKEN: ${{ secrets.CURSOR_RAPIDO_TOKEN }}
+          CURSOR_ANALIZADOR_URL: ${{ secrets.CURSOR_ANALIZADOR_URL }}
+          CURSOR_ANALIZADOR_TOKEN: ${{ secrets.CURSOR_ANALIZADOR_TOKEN }}
+          CURSOR_PLANIFICADOR_URL: ${{ secrets.CURSOR_PLANIFICADOR_URL }}
+          CURSOR_PLANIFICADOR_TOKEN: ${{ secrets.CURSOR_PLANIFICADOR_TOKEN }}
+          CURSOR_IMPLEMENTADOR_URL: ${{ secrets.CURSOR_IMPLEMENTADOR_URL }}
+          CURSOR_IMPLEMENTADOR_TOKEN: ${{ secrets.CURSOR_IMPLEMENTADOR_TOKEN }}
+          CURSOR_REVISOR_URL: ${{ secrets.CURSOR_REVISOR_URL }}
+          CURSOR_REVISOR_TOKEN: ${{ secrets.CURSOR_REVISOR_TOKEN }}
+        run: node src/dispatch.mjs
+      - name: Guardar estado
+        if: always()
+        run: |
+          if git diff --quiet state.json; then exit 0; fi
+          git config user.name "bl-jira-dispatcher"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add state.json
+          git commit -m "Estado del disparador"
+          git push
