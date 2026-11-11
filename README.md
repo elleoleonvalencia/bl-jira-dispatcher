@@ -21,6 +21,8 @@ Cada 5 minutos, lanzado desde cron-job.org con `workflow_dispatch` (`.github/wor
 
 Para relanzar un agente: saca el ticket del estado y vuelve a meterlo.
 
+Los tickets con la etiqueta `relevo-claude` se ignoran: los está trabajando el supervisor nocturno porque Cursor se quedó sin saldo. Cuando la quita, si el ticket quedó en un estado con agente, se dispara en la siguiente pasada.
+
 ## Secretos (Settings → Secrets and variables → Actions)
 
 | Secreto | Qué es |

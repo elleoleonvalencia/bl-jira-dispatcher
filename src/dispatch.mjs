@@ -18,6 +18,7 @@ export const AGENT_BY_STATUS = {
 
 const LOOKBACK_MINUTES = 1440; // 24 h: cubre retrasos y pasadas perdidas; no repite gracias a state.processed
 const KEEP_PROCESSED_DAYS = 3;
+export const RELAY_LABEL = 'relevo-claude';
 
 /**
  * Decide qué disparar. Pura: sin red ni ficheros (se prueba en test/dispatch.test.mjs).
@@ -73,7 +74,9 @@ async function jira(path, init = {}) {
 
 async function recentIssues() {
   const statuses = Object.keys(AGENT_BY_STATUS).map((s) => `"${s}"`).join(', ');
-  const jql = `project = ${env('JIRA_PROJECT')} AND status in (${statuses}) AND updated >= "-${LOOKBACK_MINUTES}m"`;
+  // Los tickets con la etiqueta relevo-claude los está trabajando el supervisor (Cursor sin saldo): no se tocan.
+  // Al quitarse la etiqueta vuelven a aparecer y, si su último cambio de estado no se disparó, se disparan.
+  const jql = `project = ${env('JIRA_PROJECT')} AND status in (${statuses}) AND (labels is EMPTY OR labels != "${RELAY_LABEL}") AND updated >= "-${LOOKBACK_MINUTES}m"`;
   const out = [];
   let nextPageToken;
   do {
