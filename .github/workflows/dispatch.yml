@@ -29,7 +29,8 @@ jobs:
       - name: Disparar agentes
         env:
           DRY_RUN: ${{ inputs.dry_run || 'false' }}
-          JIRA_BASE_URL: https://buildinglife.atlassian.net
+          # buildinglife.atlassian.net por la pasarela de Atlassian: obligatorio con tokens con alcances.
+          JIRA_BASE_URL: https://api.atlassian.com/ex/jira/e48af001-906d-4eb0-912c-3ab3ab893c8d
           JIRA_PROJECT: KAN
           JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
           JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}

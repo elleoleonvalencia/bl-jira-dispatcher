@@ -26,7 +26,7 @@ Para relanzar un agente: saca el ticket del estado y vuelve a meterlo.
 | Secreto | Qué es |
 |---|---|
 | `JIRA_EMAIL` | Email de la cuenta de Atlassian con la que se lee Jira |
-| `JIRA_API_TOKEN` | Token de API de esa cuenta (id.atlassian.com → Security → API tokens) |
+| `JIRA_API_TOKEN` | Token de API **con alcances** de esa cuenta (id.atlassian.com → Seguridad → Tokens de API), app Jira, alcances `read:jira-work` y `write:jira-work`. Por eso el workflow usa `api.atlassian.com/ex/jira/<cloudId>` y no la URL del sitio |
 | `CURSOR_<AGENTE>_URL` | URL del webhook de la automatización de Cursor |
 | `CURSOR_<AGENTE>_TOKEN` | Token de esa automatización, sin la palabra `Bearer` |
 
