@@ -41,7 +41,7 @@ test('ignora cambios anteriores a la instalación (since)', () => {
 });
 
 test('ignora cambios fuera de la ventana de búsqueda', () => {
-  const issues = [{ key: 'KAN-1', status: 'Analizando', changelog: [change('10', 400, 'Analizando'), comment('11', 1)] }];
+  const issues = [{ key: 'KAN-1', status: 'Analizando', changelog: [change('10', 2000, 'Analizando'), comment('11', 1)] }];
   const { dispatches } = selectDispatches(issues, state({ since: ago(10_000) }), now);
   assert.equal(dispatches.length, 0);
 });

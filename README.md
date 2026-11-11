@@ -4,9 +4,9 @@ Lanza los agentes de IA de Cursor cuando un ticket de Jira (proyecto KAN, BL Nut
 
 ## Cómo funciona
 
-Cada 5 minutos (GitHub Actions, `.github/workflows/dispatch.yml`):
+Cada 5 minutos, lanzado desde cron-job.org con `workflow_dispatch` (`.github/workflows/dispatch.yml`). El `schedule` de GitHub queda solo de respaldo: en la práctica GitHub lo ejecuta cada varias horas.
 
-1. Busca en Jira los tickets actualizados en las últimas 3 horas que están en un estado con agente.
+1. Busca en Jira los tickets actualizados en las últimas 24 horas que están en un estado con agente.
 2. Mira el **último cambio de estado** de cada uno. Si es nuevo (no está en `state.json`) y el ticket sigue en ese estado, llama al webhook de Cursor del agente. Un ticket que sigue parado en un estado no vuelve a disparar.
 3. Si Cursor no responde bien tras dos intentos, comenta `[IA:ERROR]` en el ticket.
 4. Guarda en `state.json` los cambios ya disparados (se limpian a los 3 días).

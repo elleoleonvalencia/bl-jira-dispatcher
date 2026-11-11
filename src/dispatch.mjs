@@ -16,7 +16,7 @@ export const AGENT_BY_STATUS = {
   'Revisando código': 'REVISOR',
 };
 
-const LOOKBACK_MINUTES = 180; // ventana de búsqueda: cubre retrasos de GitHub y pasadas perdidas
+const LOOKBACK_MINUTES = 1440; // 24 h: cubre retrasos y pasadas perdidas; no repite gracias a state.processed
 const KEEP_PROCESSED_DAYS = 3;
 
 /**
