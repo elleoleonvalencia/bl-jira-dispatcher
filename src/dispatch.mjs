@@ -19,6 +19,7 @@ export const AGENT_BY_STATUS = {
 const LOOKBACK_MINUTES = 1440; // 24 h: cubre retrasos y pasadas perdidas; no repite gracias a state.processed
 const KEEP_PROCESSED_DAYS = 3;
 export const RELAY_LABEL = 'relevo-claude';
+const RELAY_STALE_HOURS = 6; // un relevo nocturno nunca dura tanto: pasado este tiempo la etiqueta se da por abandonada
 
 /**
  * Decide qué disparar. Pura: sin red ni ficheros (se prueba en test/dispatch.test.mjs).
@@ -34,6 +35,8 @@ export function selectDispatches(issues, state, now = new Date()) {
   const dispatches = [];
   const seen = [];
   for (const issue of issues) {
+    // Relevo de Claude en curso: no se toca (ni se marca como visto, para dispararlo cuando acabe).
+    if (relayActive(issue, now)) continue;
     const statusChanges = issue.changelog
       .filter((h) => h.items.some((i) => i.field === 'status'))
       .sort((a, b) => new Date(a.created) - new Date(b.created));
@@ -48,6 +51,18 @@ export function selectDispatches(issues, state, now = new Date()) {
     dispatches.push({ key: issue.key, agent, status: to, changeId: last.id });
   }
   return { dispatches, seen };
+}
+
+/** La etiqueta relevo-claude cuenta solo si se puso hace menos de RELAY_STALE_HOURS (si se cortó el relevo, caduca). */
+export function relayActive(issue, now = new Date()) {
+  if (!(issue.labels ?? []).includes(RELAY_LABEL)) return false;
+  const added = issue.changelog
+    .filter((h) => h.items.some((i) => i.field === 'labels' && (i.toString ?? '').split(' ').includes(RELAY_LABEL)
+      && !(i.fromString ?? '').split(' ').includes(RELAY_LABEL)))
+    .map((h) => new Date(h.created))
+    .sort((a, b) => b - a)[0];
+  if (!added) return true; // no se ve cuándo se puso (historial largo): por prudencia, se respeta
+  return now - added < RELAY_STALE_HOURS * 3_600_000;
 }
 
 export function pruneProcessed(processed, now = new Date()) {
@@ -74,15 +89,13 @@ async function jira(path, init = {}) {
 
 async function recentIssues() {
   const statuses = Object.keys(AGENT_BY_STATUS).map((s) => `"${s}"`).join(', ');
-  // Los tickets con la etiqueta relevo-claude los está trabajando el supervisor (Cursor sin saldo): no se tocan.
-  // Al quitarse la etiqueta vuelven a aparecer y, si su último cambio de estado no se disparó, se disparan.
-  const jql = `project = ${env('JIRA_PROJECT')} AND status in (${statuses}) AND (labels is EMPTY OR labels != "${RELAY_LABEL}") AND updated >= "-${LOOKBACK_MINUTES}m"`;
+  const jql = `project = ${env('JIRA_PROJECT')} AND status in (${statuses}) AND updated >= "-${LOOKBACK_MINUTES}m"`;
   const out = [];
   let nextPageToken;
   do {
     const page = await jira('/rest/api/3/search/jql', {
       method: 'POST',
-      body: JSON.stringify({ jql, fields: ['status'], maxResults: 100, nextPageToken }),
+      body: JSON.stringify({ jql, fields: ['status', 'labels'], maxResults: 100, nextPageToken }),
     });
     out.push(...page.issues);
     nextPageToken = page.isLast ? undefined : page.nextPageToken;
@@ -138,7 +151,7 @@ async function main() {
   const found = await recentIssues();
   const issues = [];
   for (const i of found) {
-    issues.push({ key: i.key, status: i.fields.status.name, changelog: await lastChangelog(i.key) });
+    issues.push({ key: i.key, status: i.fields.status.name, labels: i.fields.labels ?? [], changelog: await lastChangelog(i.key) });
   }
   const { dispatches, seen } = selectDispatches(issues, state, now);
 

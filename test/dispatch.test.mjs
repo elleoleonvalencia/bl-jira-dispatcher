@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { selectDispatches, pruneProcessed } from '../src/dispatch.mjs';
+import { selectDispatches, pruneProcessed, relayActive } from '../src/dispatch.mjs';
 
 const now = new Date('2026-11-07T10:00:00Z');
 const ago = (min) => new Date(now.getTime() - min * 60_000).toISOString();
@@ -61,4 +61,27 @@ test('estados sin agente no disparan', () => {
 
 test('limpia los procesados de hace más de 3 días', () => {
   assert.deepEqual(Object.keys(pruneProcessed({ a: ago(60), b: ago(5 * 1440) }, now)), ['a']);
+});
+
+const label = (id, min, from, to) => ({ id, created: ago(min), items: [{ field: 'labels', fromString: from, toString: to }] });
+
+test('ignora tickets en relevo de Claude y no los marca como vistos', () => {
+  const issues = [{ key: 'KAN-1', status: 'Revisando código', labels: ['relevo-claude'],
+    changelog: [label('9', 30, '', 'relevo-claude'), change('10', 5, 'Revisando código')] }];
+  const { dispatches, seen } = selectDispatches(issues, state(), now);
+  assert.equal(dispatches.length, 0);
+  assert.equal(seen.length, 0);
+});
+
+test('al quitar la etiqueta de relevo dispara el cambio pendiente', () => {
+  const issues = [{ key: 'KAN-1', status: 'Revisando código', labels: [],
+    changelog: [label('9', 30, '', 'relevo-claude'), change('10', 5, 'Revisando código'), label('11', 1, 'relevo-claude', '')] }];
+  assert.deepEqual(selectDispatches(issues, state(), now).dispatches.map((d) => d.agent), ['REVISOR']);
+});
+
+test('una etiqueta de relevo de más de 6 horas se da por abandonada', () => {
+  const stale = { labels: ['relevo-claude'], changelog: [label('9', 7 * 60, 'complejo', 'complejo relevo-claude')] };
+  const fresh = { labels: ['relevo-claude'], changelog: [label('9', 60, '', 'relevo-claude')] };
+  assert.equal(relayActive(stale, now), false);
+  assert.equal(relayActive(fresh, now), true);
 });
