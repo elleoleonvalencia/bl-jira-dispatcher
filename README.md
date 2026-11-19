@@ -1,6 +1,6 @@
 # bl-jira-dispatcher
 
-Lanza los agentes de IA de Cursor cuando un ticket de Jira (proyecto KAN, BL Nutrition) entra en un estado con agente. Sustituye a las reglas de Jira Automation, que en el plan gratuito de Jira se quedan sin pasos.
+Lanza los agentes de IA de Cursor cuando un ticket de Jira entra en un estado con agente. Sirve para varios proyectos (KAN = BL Nutrition, BLFIT = BL Fitt, BLWEB = BL Web), cada uno con su interruptor en `projects.json`. Sustituye a las reglas de Jira Automation, que en el plan gratuito de Jira se quedan sin pasos.
 
 ## Cómo funciona
 
@@ -22,6 +22,16 @@ Cada 5 minutos, lanzado desde cron-job.org con `workflow_dispatch` (`.github/wor
 Para relanzar un agente: saca el ticket del estado y vuelve a meterlo.
 
 Los tickets con la etiqueta `relevo-claude` se ignoran (si lleva más de 6 h puesta se da por abandonada, por si el relevo se cortó): los está trabajando el supervisor nocturno porque Cursor se quedó sin saldo. Cuando la quita, si el ticket quedó en un estado con agente, se dispara en la siguiente pasada.
+
+## Proyectos (`projects.json`)
+
+```json
+"BLFIT": { "name": "BL Fitt", "enabled": false, "since": null }
+```
+
+- `enabled`: interruptor. Un proyecto apagado ni se consulta.
+- `since`: hora desde la que se disparan sus cambios. **Al encender un proyecto, pon aquí la hora de encendido** (UTC, ISO 8601): así no se disparan de golpe los cambios de estado anteriores. Sin `since` no dispara nada.
+- Webhooks: por defecto todos los proyectos usan las mismas automatizaciones de Cursor (`CURSOR_<AGENTE>_URL`); el agente sabe de qué proyecto es el ticket por su clave. Si un proyecto necesita automatizaciones propias, crea los secretos `CURSOR_<PROYECTO>_<AGENTE>_URL` y `_TOKEN` y añádelos al `env` de `dispatch.yml`: tienen preferencia.
 
 ## Secretos (Settings → Secrets and variables → Actions)
 

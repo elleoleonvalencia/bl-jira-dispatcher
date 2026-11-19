@@ -1,0 +1,5 @@
+{
+  "KAN": { "name": "BL Nutrition", "enabled": true, "since": "2026-11-07T08:03:05.000Z" },
+  "BLFIT": { "name": "BL Fitt", "enabled": false, "since": null },
+  "BLWEB": { "name": "BL Web", "enabled": false, "since": null }
+}
