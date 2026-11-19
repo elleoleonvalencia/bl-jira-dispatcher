@@ -85,3 +85,38 @@ test('una etiqueta de relevo de más de 6 horas se da por abandonada', () => {
   assert.equal(relayActive(stale, now), false);
   assert.equal(relayActive(fresh, now), true);
 });
+
+import { enabledProjects, projectOf, webhookVars } from '../src/dispatch.mjs';
+
+const projects = {
+  KAN: { enabled: true, since: ago(10_000) },
+  BLFIT: { enabled: false, since: null },
+  BLWEB: { enabled: true, since: ago(5) },
+};
+
+test('solo se consultan los proyectos encendidos', () => {
+  assert.deepEqual(enabledProjects(projects), ['KAN', 'BLWEB']);
+  assert.equal(projectOf('BLFIT-12'), 'BLFIT');
+});
+
+test('un proyecto apagado no dispara aunque aparezca un ticket suyo', () => {
+  const issues = [{ key: 'BLFIT-1', status: 'Analizando', changelog: [change('10', 1, 'Analizando')] }];
+  const { dispatches, seen } = selectDispatches(issues, state(), now, projects);
+  assert.equal(dispatches.length, 0);
+  assert.equal(seen.length, 0);
+});
+
+test('al encender un proyecto no se disparan los cambios anteriores al encendido', () => {
+  const issues = [
+    { key: 'BLWEB-1', status: 'Analizando', changelog: [change('10', 20, 'Analizando')] },
+    { key: 'BLWEB-2', status: 'Analizando', changelog: [change('20', 2, 'Analizando')] },
+    { key: 'KAN-3', status: 'Analizando', changelog: [change('30', 20, 'Analizando')] },
+  ];
+  assert.deepEqual(selectDispatches(issues, state(), now, projects).dispatches.map((d) => d.key), ['BLWEB-2', 'KAN-3']);
+});
+
+test('webhook propio del proyecto si existe; si no, el común', () => {
+  const vars = { CURSOR_BLFIT_ANALIZADOR_URL: 'x' };
+  assert.deepEqual(webhookVars('ANALIZADOR', 'BLFIT', vars), { url: 'CURSOR_BLFIT_ANALIZADOR_URL', token: 'CURSOR_BLFIT_ANALIZADOR_TOKEN' });
+  assert.deepEqual(webhookVars('ANALIZADOR', 'KAN', vars), { url: 'CURSOR_ANALIZADOR_URL', token: 'CURSOR_ANALIZADOR_TOKEN' });
+});
