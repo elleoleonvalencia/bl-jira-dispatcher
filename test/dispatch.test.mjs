@@ -120,3 +120,18 @@ test('webhook propio del proyecto si existe; si no, el común', () => {
   assert.deepEqual(webhookVars('ANALIZADOR', 'BLFIT', vars), { url: 'CURSOR_BLFIT_ANALIZADOR_URL', token: 'CURSOR_BLFIT_ANALIZADOR_TOKEN' });
   assert.deepEqual(webhookVars('ANALIZADOR', 'KAN', vars), { url: 'CURSOR_ANALIZADOR_URL', token: 'CURSOR_ANALIZADOR_TOKEN' });
 });
+
+import { routineVars, routineText, ROUTINE_HEADERS } from '../src/dispatch.mjs';
+
+test('rutina de Claude si existe; del proyecto antes que la común; si no, null (Cursor)', () => {
+  const vars = { CLAUDE_ANALIZADOR_URL: 'a', CLAUDE_BLFIT_REVISOR_URL: 'b' };
+  assert.deepEqual(routineVars('ANALIZADOR', 'KAN', vars), { url: 'CLAUDE_ANALIZADOR_URL', token: 'CLAUDE_ANALIZADOR_TOKEN' });
+  assert.deepEqual(routineVars('REVISOR', 'BLFIT', vars), { url: 'CLAUDE_BLFIT_REVISOR_URL', token: 'CLAUDE_BLFIT_REVISOR_TOKEN' });
+  assert.equal(routineVars('REVISOR', 'KAN', vars), null);
+});
+
+test('texto del disparo de la rutina y cabeceras', () => {
+  const t = routineText('ANALIZADOR', { key: 'KAN-7', fields: { status: { name: 'Analizando' }, summary: 'Algo' } });
+  assert.equal(t, 'Ticket KAN-7 (proyecto KAN) en estado «Analizando». Agente: analizador. Título: Algo');
+  assert.equal(ROUTINE_HEADERS['anthropic-version'], '2023-06-01');
+});

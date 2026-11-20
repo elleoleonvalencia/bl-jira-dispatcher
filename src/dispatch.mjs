@@ -1,4 +1,4 @@
-// Disparador Jira → Cursor. Sustituye a las reglas de Jira Automation del pipeline de agentes.
+// Disparador Jira → agentes (rutinas de Claude Code o Cursor). Sustituye a las reglas de Jira Automation del pipeline de agentes.
 //
 // Cada pasada busca los tickets que han ENTRADO en un estado con agente (no los que siguen en él),
 // llama al webhook de Cursor de ese agente una sola vez por cambio y guarda en state.json los cambios
@@ -134,6 +134,48 @@ export function webhookVars(agent, project, envVars = process.env) {
   return { url: `${prefix}_URL`, token: `${prefix}_TOKEN` };
 }
 
+// Rutina de Claude Code del agente, si está configurada (CLAUDE_<PROYECTO>_<AGENTE>_URL o CLAUDE_<AGENTE>_URL,
+// la URL .../routines/<trigger>/fire). Tiene preferencia sobre Cursor.
+export function routineVars(agent, project, envVars = process.env) {
+  for (const prefix of [`CLAUDE_${project}_${agent}`, `CLAUDE_${agent}`]) {
+    if (envVars[`${prefix}_URL`]) return { url: `${prefix}_URL`, token: `${prefix}_TOKEN` };
+  }
+  return null;
+}
+
+export const ROUTINE_HEADERS = {
+  'anthropic-beta': 'experimental-cc-routine-2026-04-01',
+  'anthropic-version': '2023-06-01',
+  'Content-Type': 'application/json',
+};
+
+export function routineText(agent, issue) {
+  return `Ticket ${issue.key} (proyecto ${projectOf(issue.key)}) en estado «${issue.fields?.status?.name ?? '?'}». ` +
+    `Agente: ${agent.toLowerCase()}. Título: ${issue.fields?.summary ?? ''}`;
+}
+
+async function post(url, headers, body) {
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    try {
+      const res = await fetch(url, { method: 'POST', headers, body });
+      if (res.ok) return { ok: true, status: res.status };
+      if (attempt === 2) return { ok: false, status: res.status };
+    } catch (e) {
+      if (attempt === 2) return { ok: false, status: 'sin respuesta' };
+    }
+    await new Promise((r) => setTimeout(r, 5000));
+  }
+}
+
+async function callAgent(agent, issueKey) {
+  const routine = routineVars(agent, projectOf(issueKey));
+  if (!routine) return callCursor(agent, issueKey);
+  const issue = await jira(`/rest/api/3/issue/${issueKey}?fields=summary,status`);
+  const r = await post(env(routine.url), { ...ROUTINE_HEADERS, Authorization: `Bearer ${env(routine.token)}` },
+    JSON.stringify({ text: routineText(agent, issue) }));
+  return { ...r, via: 'Claude' };
+}
+
 async function callCursor(agent, issueKey) {
   const vars = webhookVars(agent, projectOf(issueKey));
   // Mismo contenido que la regla de Jira («Datos de la incidencia»): el agente lee issue.key.
@@ -156,7 +198,7 @@ async function callCursor(agent, issueKey) {
 }
 
 async function commentError(key, status, httpStatus) {
-  const text = `[IA:ERROR] El disparador (bl-jira-dispatcher) no pudo lanzar el agente en Cursor al entrar en «${status}». Respuesta: ${httpStatus}. Para reintentar, saca el ticket del estado y vuelve a meterlo.`;
+  const text = `[IA:ERROR] El disparador (bl-jira-dispatcher) no pudo lanzar el agente (rutina de Claude o Cursor) al entrar en «${status}». Respuesta: ${httpStatus}. Para reintentar, saca el ticket del estado y vuelve a meterlo.`;
   await jira(`/rest/api/3/issue/${key}/comment`, {
     method: 'POST',
     body: JSON.stringify({ body: { type: 'doc', version: 1, content: [{ type: 'paragraph', content: [{ type: 'text', text }] }] } }),
@@ -191,7 +233,7 @@ async function main() {
   try {
     for (const d of dispatches) {
       if (dryRun) continue;
-      const r = await callCursor(d.agent, d.key);
+      const r = await callAgent(d.agent, d.key);
       state.processed[d.changeId] = now.toISOString(); // disparado (o fallido y avisado): no repetir
       if (r.ok) ok++;
       else {
@@ -201,7 +243,7 @@ async function main() {
       }
     }
   } finally {
-    console.log(`Proyectos: ${keys.length} · tickets revisados: ${issues.length} · disparos: ${dispatches.length}${dryRun ? ' (simulación, no se llamó a Cursor)' : ` · ok: ${ok} · fallidos: ${failed}`}`);
+    console.log(`Proyectos: ${keys.length} · tickets revisados: ${issues.length} · disparos: ${dispatches.length}${dryRun ? ' (simulación, no se llamó a ningún agente)' : ` · ok: ${ok} · fallidos: ${failed}`}`);
     if (!dryRun && seen.length > 0) {
       // Los cambios que no tocaba disparar se marcan ya; los disparos solo cuando se hicieron (arriba).
       const toDispatch = new Set(dispatches.map((d) => d.changeId));
