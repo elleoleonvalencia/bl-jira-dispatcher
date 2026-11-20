@@ -33,6 +33,14 @@ Los tickets con la etiqueta `relevo-claude` se ignoran (si lleva más de 6 h pue
 - `since`: hora desde la que se disparan sus cambios. **Al encender un proyecto, pon aquí la hora de encendido** (UTC, ISO 8601): así no se disparan de golpe los cambios de estado anteriores. Sin `since` no dispara nada.
 - Webhooks: por defecto todos los proyectos usan las mismas automatizaciones de Cursor (`CURSOR_<AGENTE>_URL`); el agente sabe de qué proyecto es el ticket por su clave. Si un proyecto necesita automatizaciones propias, crea los secretos `CURSOR_<PROYECTO>_<AGENTE>_URL` y `_TOKEN` y añádelos al `env` de `dispatch.yml`: tienen preferencia.
 
+## Rutinas de Claude Code
+
+Si existe el secreto `CLAUDE_<AGENTE>_URL` (la URL `.../routines/<trigger>/fire` de la rutina) con su
+`CLAUDE_<AGENTE>_TOKEN`, el disparador llama a esa rutina en vez de a Cursor, con un texto como
+«Ticket KAN-7 (proyecto KAN) en estado «Analizando». Agente: analizador.». También admite
+`CLAUDE_<PROYECTO>_<AGENTE>_URL`. Quitar el secreto vuelve a Cursor. Instrucciones de las rutinas:
+`claude/rutina-agente.md` en bl-agentes.
+
 ## Secretos (Settings → Secrets and variables → Actions)
 
 | Secreto | Qué es |

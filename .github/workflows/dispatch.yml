@@ -34,6 +34,17 @@ jobs:
           # Proyectos y su interruptor: projects.json
           JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
           JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+          # Rutinas de Claude Code (si existen, tienen preferencia sobre Cursor)
+          CLAUDE_RAPIDO_URL: ${{ secrets.CLAUDE_RAPIDO_URL }}
+          CLAUDE_RAPIDO_TOKEN: ${{ secrets.CLAUDE_RAPIDO_TOKEN }}
+          CLAUDE_ANALIZADOR_URL: ${{ secrets.CLAUDE_ANALIZADOR_URL }}
+          CLAUDE_ANALIZADOR_TOKEN: ${{ secrets.CLAUDE_ANALIZADOR_TOKEN }}
+          CLAUDE_PLANIFICADOR_URL: ${{ secrets.CLAUDE_PLANIFICADOR_URL }}
+          CLAUDE_PLANIFICADOR_TOKEN: ${{ secrets.CLAUDE_PLANIFICADOR_TOKEN }}
+          CLAUDE_IMPLEMENTADOR_URL: ${{ secrets.CLAUDE_IMPLEMENTADOR_URL }}
+          CLAUDE_IMPLEMENTADOR_TOKEN: ${{ secrets.CLAUDE_IMPLEMENTADOR_TOKEN }}
+          CLAUDE_REVISOR_URL: ${{ secrets.CLAUDE_REVISOR_URL }}
+          CLAUDE_REVISOR_TOKEN: ${{ secrets.CLAUDE_REVISOR_TOKEN }}
           CURSOR_RAPIDO_URL: ${{ secrets.CURSOR_RAPIDO_URL }}
           CURSOR_RAPIDO_TOKEN: ${{ secrets.CURSOR_RAPIDO_TOKEN }}
           CURSOR_ANALIZADOR_URL: ${{ secrets.CURSOR_ANALIZADOR_URL }}
