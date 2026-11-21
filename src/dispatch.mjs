@@ -1,7 +1,7 @@
-// Disparador Jira → agentes (rutinas de Claude Code o Cursor). Sustituye a las reglas de Jira Automation del pipeline de agentes.
+// Disparador Jira → agentes (rutinas de Claude Code). Sustituye a las reglas de Jira Automation del pipeline de agentes.
 //
 // Cada pasada busca los tickets que han ENTRADO en un estado con agente (no los que siguen en él),
-// llama al webhook de Cursor de ese agente una sola vez por cambio y guarda en state.json los cambios
+// llama a la rutina de Claude Code de ese agente una sola vez por cambio y guarda en state.json los cambios
 // ya disparados. Los registros son públicos: no se escriben claves de ticket, títulos ni respuestas.
 
 import { readFile, writeFile } from 'node:fs/promises';
@@ -126,16 +126,8 @@ async function lastChangelog(key) {
   return page.values.map((h) => ({ id: h.id, created: h.created, items: h.items }));
 }
 
-// Webhook del agente: si existe CURSOR_<PROYECTO>_<AGENTE>_URL (una automatización de Cursor propia de ese
-// proyecto) se usa esa; si no, la común CURSOR_<AGENTE>_URL. El agente sabe el proyecto por issue.key.
-export function webhookVars(agent, project, envVars = process.env) {
-  const specific = `CURSOR_${project}_${agent}`;
-  const prefix = envVars[`${specific}_URL`] ? specific : `CURSOR_${agent}`;
-  return { url: `${prefix}_URL`, token: `${prefix}_TOKEN` };
-}
-
-// Rutina de Claude Code del agente, si está configurada (CLAUDE_<PROYECTO>_<AGENTE>_URL o CLAUDE_<AGENTE>_URL,
-// la URL .../routines/<trigger>/fire). Tiene preferencia sobre Cursor.
+// Rutina de Claude Code del agente: CLAUDE_<PROYECTO>_<AGENTE>_URL si existe, si no CLAUDE_<AGENTE>_URL
+// (la URL .../routines/<trigger>/fire), cada una con su _TOKEN.
 export function routineVars(agent, project, envVars = process.env) {
   for (const prefix of [`CLAUDE_${project}_${agent}`, `CLAUDE_${agent}`]) {
     if (envVars[`${prefix}_URL`]) return { url: `${prefix}_URL`, token: `${prefix}_TOKEN` };
@@ -169,36 +161,14 @@ async function post(url, headers, body) {
 
 async function callAgent(agent, issueKey) {
   const routine = routineVars(agent, projectOf(issueKey));
-  if (!routine) return callCursor(agent, issueKey);
+  if (!routine) return { ok: false, status: `sin rutina configurada (falta CLAUDE_${agent}_URL)` };
   const issue = await jira(`/rest/api/3/issue/${issueKey}?fields=summary,status`);
-  const r = await post(env(routine.url), { ...ROUTINE_HEADERS, Authorization: `Bearer ${env(routine.token)}` },
+  return post(env(routine.url), { ...ROUTINE_HEADERS, Authorization: `Bearer ${env(routine.token)}` },
     JSON.stringify({ text: routineText(agent, issue) }));
-  return { ...r, via: 'Claude' };
-}
-
-async function callCursor(agent, issueKey) {
-  const vars = webhookVars(agent, projectOf(issueKey));
-  // Mismo contenido que la regla de Jira («Datos de la incidencia»): el agente lee issue.key.
-  const issue = await jira(`/rest/api/3/issue/${issueKey}?fields=summary,status,issuetype,parent,labels,priority,project`);
-  const body = JSON.stringify({ issue, source: 'bl-jira-dispatcher' });
-  for (let attempt = 1; attempt <= 2; attempt++) {
-    try {
-      const res = await fetch(env(vars.url), {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${env(vars.token)}`, 'Content-Type': 'application/json' },
-        body,
-      });
-      if (res.ok) return { ok: true, status: res.status };
-      if (attempt === 2) return { ok: false, status: res.status };
-    } catch (e) {
-      if (attempt === 2) return { ok: false, status: 'sin respuesta' };
-    }
-    await new Promise((r) => setTimeout(r, 5000));
-  }
 }
 
 async function commentError(key, status, httpStatus) {
-  const text = `[IA:ERROR] El disparador (bl-jira-dispatcher) no pudo lanzar el agente (rutina de Claude o Cursor) al entrar en «${status}». Respuesta: ${httpStatus}. Para reintentar, saca el ticket del estado y vuelve a meterlo.`;
+  const text = `[IA:ERROR] El disparador (bl-jira-dispatcher) no pudo lanzar el agente (rutina de Claude Code) al entrar en «${status}». Respuesta: ${httpStatus}. Para reintentar, saca el ticket del estado y vuelve a meterlo.`;
   await jira(`/rest/api/3/issue/${key}/comment`, {
     method: 'POST',
     body: JSON.stringify({ body: { type: 'doc', version: 1, content: [{ type: 'paragraph', content: [{ type: 'text', text }] }] } }),
