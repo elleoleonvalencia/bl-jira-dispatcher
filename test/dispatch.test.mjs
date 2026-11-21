@@ -86,7 +86,7 @@ test('una etiqueta de relevo de más de 6 horas se da por abandonada', () => {
   assert.equal(relayActive(fresh, now), true);
 });
 
-import { enabledProjects, projectOf, webhookVars } from '../src/dispatch.mjs';
+import { enabledProjects, projectOf } from '../src/dispatch.mjs';
 
 const projects = {
   KAN: { enabled: true, since: ago(10_000) },
@@ -115,15 +115,9 @@ test('al encender un proyecto no se disparan los cambios anteriores al encendido
   assert.deepEqual(selectDispatches(issues, state(), now, projects).dispatches.map((d) => d.key), ['BLWEB-2', 'KAN-3']);
 });
 
-test('webhook propio del proyecto si existe; si no, el común', () => {
-  const vars = { CURSOR_BLFIT_ANALIZADOR_URL: 'x' };
-  assert.deepEqual(webhookVars('ANALIZADOR', 'BLFIT', vars), { url: 'CURSOR_BLFIT_ANALIZADOR_URL', token: 'CURSOR_BLFIT_ANALIZADOR_TOKEN' });
-  assert.deepEqual(webhookVars('ANALIZADOR', 'KAN', vars), { url: 'CURSOR_ANALIZADOR_URL', token: 'CURSOR_ANALIZADOR_TOKEN' });
-});
-
 import { routineVars, routineText, ROUTINE_HEADERS } from '../src/dispatch.mjs';
 
-test('rutina de Claude si existe; del proyecto antes que la común; si no, null (Cursor)', () => {
+test('rutina de Claude: la del proyecto antes que la común; si no hay, null', () => {
   const vars = { CLAUDE_ANALIZADOR_URL: 'a', CLAUDE_BLFIT_REVISOR_URL: 'b' };
   assert.deepEqual(routineVars('ANALIZADOR', 'KAN', vars), { url: 'CLAUDE_ANALIZADOR_URL', token: 'CLAUDE_ANALIZADOR_TOKEN' });
   assert.deepEqual(routineVars('REVISOR', 'BLFIT', vars), { url: 'CLAUDE_BLFIT_REVISOR_URL', token: 'CLAUDE_BLFIT_REVISOR_TOKEN' });

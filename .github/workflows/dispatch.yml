@@ -1,4 +1,4 @@
-name: Disparador Jira → Cursor
+name: Disparador Jira → agentes (rutinas de Claude)
 
 on:
   schedule:
@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       dry_run:
-        description: "Simulación: busca cambios pero no llama a Cursor ni guarda el estado"
+        description: "Simulación: busca cambios pero no llama a ningún agente ni guarda el estado"
         type: boolean
         default: false
 
@@ -34,7 +34,7 @@ jobs:
           # Proyectos y su interruptor: projects.json
           JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
           JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
-          # Rutinas de Claude Code (si existen, tienen preferencia sobre Cursor)
+          # Rutinas de Claude Code de cada agente
           CLAUDE_RAPIDO_URL: ${{ secrets.CLAUDE_RAPIDO_URL }}
           CLAUDE_RAPIDO_TOKEN: ${{ secrets.CLAUDE_RAPIDO_TOKEN }}
           CLAUDE_ANALIZADOR_URL: ${{ secrets.CLAUDE_ANALIZADOR_URL }}
@@ -45,16 +45,6 @@ jobs:
           CLAUDE_IMPLEMENTADOR_TOKEN: ${{ secrets.CLAUDE_IMPLEMENTADOR_TOKEN }}
           CLAUDE_REVISOR_URL: ${{ secrets.CLAUDE_REVISOR_URL }}
           CLAUDE_REVISOR_TOKEN: ${{ secrets.CLAUDE_REVISOR_TOKEN }}
-          CURSOR_RAPIDO_URL: ${{ secrets.CURSOR_RAPIDO_URL }}
-          CURSOR_RAPIDO_TOKEN: ${{ secrets.CURSOR_RAPIDO_TOKEN }}
-          CURSOR_ANALIZADOR_URL: ${{ secrets.CURSOR_ANALIZADOR_URL }}
-          CURSOR_ANALIZADOR_TOKEN: ${{ secrets.CURSOR_ANALIZADOR_TOKEN }}
-          CURSOR_PLANIFICADOR_URL: ${{ secrets.CURSOR_PLANIFICADOR_URL }}
-          CURSOR_PLANIFICADOR_TOKEN: ${{ secrets.CURSOR_PLANIFICADOR_TOKEN }}
-          CURSOR_IMPLEMENTADOR_URL: ${{ secrets.CURSOR_IMPLEMENTADOR_URL }}
-          CURSOR_IMPLEMENTADOR_TOKEN: ${{ secrets.CURSOR_IMPLEMENTADOR_TOKEN }}
-          CURSOR_REVISOR_URL: ${{ secrets.CURSOR_REVISOR_URL }}
-          CURSOR_REVISOR_TOKEN: ${{ secrets.CURSOR_REVISOR_TOKEN }}
         run: node src/dispatch.mjs
       - name: Guardar estado
         if: always()
