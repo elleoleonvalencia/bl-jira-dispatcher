@@ -11,7 +11,7 @@
   },
   "BLWEB": {
     "name": "BL Web",
-    "enabled": false,
-    "since": null
+    "enabled": true,
+    "since": "2026-11-23T17:18:56.000Z"
   }
 }
